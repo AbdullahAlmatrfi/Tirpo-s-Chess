@@ -13,7 +13,6 @@ export interface BoardApi {
 
 export interface RunSettings {
   engineKey: string
-  engine2: string
   depth: number
   me: string
 }
@@ -39,14 +38,12 @@ async function analysePosition(fen: string, depth: number, key: string) {
 export function useAnalysis(board: BoardApi, setFlipped: (f: boolean) => void) {
   const [game, setGame] = useState<GameData>(emptyGame)
   const [evals, setEvals] = useState<Evals>(() => blank(1))
-  const [evals2, setEvals2] = useState<Evals | null>(null)
-  const [engNames, setEngNames] = useState({ a: '', b: '' })
   const [cur, setCur] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1200)
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<number | null>(null)
-  const [status, setStatus] = useState<Status>({ text: 'Paste your game and press Analyze.', err: false })
+  const [status, setStatus] = useState<Status>({ text: 'Paste your game and press Analyze. Or drag a piece on the board to play the engine.', err: false })
 
   const curRef = useRef(0)
   const gameRef = useRef(game)
@@ -92,7 +89,6 @@ export function useAnalysis(board: BoardApi, setFlipped: (f: boolean) => void) {
       gameRef.current = g
       setGame(g)
       setEvals(preset ?? blank(g.fens.length))
-      setEvals2(null)
       const m = me.trim().toLowerCase()
       if (m) {
         if (g.names.b.toLowerCase() === m) setFlipped(true)
@@ -123,18 +119,14 @@ export function useAnalysis(board: BoardApi, setFlipped: (f: boolean) => void) {
       const id = ++runId.current
       const alive = () => runId.current === id
       const k1 = s.engineKey
-      const k2 = s.engine2 && s.engine2 !== k1 ? s.engine2 : ''
       load(g, undefined, s.me)
-      setEngNames({ a: engineLabel(k1), b: k2 ? engineLabel(k2) : '' })
-      if (k2) setEvals2(blank(g.fens.length))
       setRunning(true)
       setProgress(0)
       setStatus({ text: 'Starting the engine…', err: false })
       try {
-        await Promise.all([getEngine(k1).ready, ...(k2 ? [getEngine(k2).ready] : [])])
+        await getEngine(k1).ready
         const n = g.fens.length
         const t0 = Date.now()
-        let disagree = 0
         let finished = true
         for (let i = 0; i < n; i++) {
           if (!alive()) {
@@ -142,28 +134,18 @@ export function useAnalysis(board: BoardApi, setFlipped: (f: boolean) => void) {
             break
           }
           setStatus({ text: `Analyzing position ${i + 1} of ${n}…`, err: false })
-          const rs = await Promise.all([
-            analysePosition(g.fens[i]!, s.depth, k1),
-            ...(k2 ? [analysePosition(g.fens[i]!, s.depth, k2)] : []),
-          ])
-          const r = rs[0]!
-          const r2 = rs[1]
-          if (r.aborted || r2?.aborted || !alive()) {
+          const r = await analysePosition(g.fens[i]!, s.depth, k1)
+          if (r.aborted || !alive()) {
             finished = false
             break
           }
           setEvals((prev) => Object.assign([...prev], { [i]: r.lines }))
-          if (r2) {
-            setEvals2((prev) => (prev ? Object.assign([...prev], { [i]: r2.lines }) : prev))
-            if (r2.lines[0] && r.lines[0] && r2.lines[0].mv !== r.lines[0].mv) disagree++
-          }
           setProgress(((i + 1) / n) * 100)
         }
         if (alive()) {
           if (finished) {
             const secs = Math.round((Date.now() - t0) / 1000)
-            const extra = k2 ? ` The two engines picked a different first move in ${disagree} of ${n} positions.` : ''
-            setStatus({ text: `Done in ${secs} s.${extra} Press Play.`, err: false })
+            setStatus({ text: `Done in ${secs} s with ${engineLabel(k1)}. Press Play.`, err: false })
           } else setStatus({ text: 'Stopped.', err: false })
         }
       } catch (err) {
@@ -201,7 +183,7 @@ export function useAnalysis(board: BoardApi, setFlipped: (f: boolean) => void) {
   }, [playing, go])
 
   return {
-    game, evals, evals2, engNames, cur, playing, speed, setSpeed, running, progress, status, setStatus,
+    game, evals, cur, playing, speed, setSpeed, running, progress, status, setStatus,
     rows, summary, go, load, run, stop, pause, togglePlay,
   }
 }

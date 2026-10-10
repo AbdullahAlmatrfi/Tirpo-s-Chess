@@ -45,7 +45,7 @@ label.chk{display:inline-flex;gap:6px;align-items:center;font-weight:600;font-si
 .prog i{display:block;height:100%;width:0;background:var(--best);transition:width .2s}
 .main{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
 @media (min-width:860px){.main{grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr);align-items:start}}
-.names{display:flex;justify-content:space-between;gap:8px;font-weight:700;font-size:.9rem;margin-bottom:8px}
+.names{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700;font-size:.9rem;margin-bottom:8px;min-height:30px}
 .names span{overflow-wrap:anywhere}
 .boardrow{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;max-width:max(300px,min(100%,calc(100dvh - 120px)));margin-inline:auto}
 .bar{position:relative;border-radius:4px;overflow:hidden;background:var(--bar-b);border:1px solid var(--line)}
@@ -113,6 +113,10 @@ h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut
 .hint .rk{width:26px;height:26px;border-radius:50%;color:#fff;font:700 .85rem var(--mono);display:flex;align-items:center;justify-content:center}
 .hint.r1 .rk{background:var(--a1)}.hint.r2 .rk{background:var(--a2)}.hint.r3 .rk{background:var(--a3)}.hint.rb .rk{background:var(--brill)}
 .hint.rb{border-color:var(--brill)}
+.hint.pick{cursor:pointer}
+.hint.pick:hover{background:var(--bg)}
+.hint.sel{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg) inset}
+.hint.pick:focus-visible{outline:2px solid var(--great);outline-offset:2px}
 .hint .t{font-weight:700;overflow-wrap:anywhere}
 .hint .t small{display:block;color:var(--muted);font:500 .75rem var(--mono);margin-top:1px}
 .hint .e{font:700 .9rem var(--mono);color:var(--muted);text-align:right}
@@ -121,7 +125,7 @@ h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut
 .eng{font-size:.8rem;color:var(--muted);margin-top:8px}
 .eng.err{color:var(--warn);font-weight:600}
 .cell.uh{background:rgba(235,97,80,.55)}#board{touch-action:manipulation}
-.trybar{margin:6px 0;padding:7px 12px;border-radius:10px;font-weight:800;font-size:.9rem;text-align:center;background:rgba(124,92,255,.18);color:#6b4cf0;border:1.5px dashed #7c5cff}
+.trybar{margin:0 0 8px;min-height:30px;padding:0 12px;display:flex;align-items:center;justify-content:center;border-radius:10px;font-weight:800;font-size:.9rem;text-align:center;background:rgba(124,92,255,.18);color:#6b4cf0;border:1.5px dashed #7c5cff}
 @media (prefers-color-scheme:dark){.trybar{color:#b9a8ff}}
 body.trying .board{outline:3px dashed #7c5cff;outline-offset:4px;box-shadow:0 0 0 10px rgba(124,92,255,.14),0 0 40px rgba(124,92,255,.35);filter:saturate(.75) hue-rotate(-12deg);transition:box-shadow .3s,filter .3s}
 body.trying .boardrow{background:radial-gradient(ellipse at center,rgba(124,92,255,.14),transparent 70%);border-radius:16px;padding:6px}
@@ -140,3 +144,17 @@ body.trying .boardrow{background:radial-gradient(ellipse at center,rgba(124,92,2
 .presets button{min-height:34px;padding:4px 10px}
 .bar.flip{transform:rotate(180deg)}
 .lbl{font-size:.8rem;color:var(--muted);font-weight:600;display:inline-flex;align-items:center;gap:6px}
+
+/* paste card: folded on phones so the board is on the first screen; always open on desktop */
+.paste .pastetoggle{width:100%;text-align:left}
+.paste.folded .pastebody{display:none}
+.paste .status{margin-top:10px;flex:none}
+.paste.folded .status{margin-top:8px}
+.paste:not(.folded) .pastetoggle{margin-bottom:12px}
+@media (min-width:860px){
+  .paste .pastetoggle{display:none}
+  .paste.folded .pastebody{display:block}
+  .paste:not(.folded) .pastetoggle{margin-bottom:0}
+  .paste .status{margin-top:10px}
+}
+button.linkbtn{min-height:0;padding:0;border:0;background:none;color:var(--great);text-decoration:underline;font:inherit;font-weight:700}

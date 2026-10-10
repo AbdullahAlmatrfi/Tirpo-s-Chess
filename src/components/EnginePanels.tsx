@@ -24,7 +24,17 @@ function EloInput({ value, onCommit }: { value: number; onCommit: (v: number) =>
   )
 }
 
-export function EngineMain({ p, onFlip, onBack }: { p: Play; onFlip: () => void; onBack: (() => void) | null }) {
+export type ArrowMode = 'one' | 'all' | 'off'
+
+interface MainProps {
+  p: Play
+  arrowMode: ArrowMode
+  onArrowMode: (m: ArrowMode) => void
+  onFlip: () => void
+  onBack: (() => void) | null
+}
+
+export function EngineMain({ p, arrowMode, onArrowMode, onFlip, onBack }: MainProps) {
   return (
     <div>
       <div className={`pstatus${p.status.over ? ' over' : ''}`} aria-live="polite">{p.status.text}</div>
@@ -44,6 +54,15 @@ export function EngineMain({ p, onFlip, onBack }: { p: Play; onFlip: () => void;
         <label className="chk">
           <input type="checkbox" checked={p.hintsOn} onChange={(e) => p.setHintsOn(e.target.checked)} /> Hints
         </label>
+        {p.hintsOn && (
+          <label className="lbl">Arrows
+            <select aria-label="Arrows" value={arrowMode} onChange={(e) => onArrowMode(e.target.value as ArrowMode)}>
+              <option value="one">One at a time</option>
+              <option value="all">All 3 together</option>
+              <option value="off">None</option>
+            </select>
+          </label>
+        )}
       </div>
       {p.opp !== 'none' && (
         <div className="elo">
@@ -71,7 +90,17 @@ export function EngineMain({ p, onFlip, onBack }: { p: Play; onFlip: () => void;
   )
 }
 
-export function EngineSide({ p, onAnalyze }: { p: Play; onAnalyze: (text: string) => void }) {
+interface SideProps {
+  p: Play
+  onAnalyze: (text: string) => void
+  arrowMode: ArrowMode
+  /** which hint row is highlighted (its arrow is the one on the board in "one at a time" mode) */
+  focus: number
+  onPick: (i: number) => void
+  onHover: (i: number | null) => void
+}
+
+export function EngineSide({ p, onAnalyze, arrowMode, focus, onPick, onHover }: SideProps) {
   const [setup, setSetup] = useState('')
   const [loadMsg, setLoadMsg] = useState('')
   const [copied, setCopied] = useState('')
@@ -85,13 +114,28 @@ export function EngineSide({ p, onAnalyze }: { p: Play; onAnalyze: (text: string
   else if (!p.hints) hintBody = <span className="foot">Thinking…</span>
   else {
     const h = p.hints
+    const one = arrowMode === 'one'
+    // rows act as buttons in "one at a time" mode: hover or tap one to put its arrow on the board
+    const pick = (i: number) =>
+      one
+        ? {
+            role: 'button' as const, tabIndex: 0, 'aria-pressed': focus === i,
+            onClick: () => onPick(i),
+            onMouseEnter: () => onHover(i),
+            onMouseLeave: () => onHover(null),
+            onFocus: () => onHover(i),
+            onBlur: () => onHover(null),
+            onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(i) } },
+          }
+        : {}
+    const cls = (i: number) => (one ? ` pick${focus === i ? ' sel' : ''}` : '')
     hintBody = (
       <>
         {h.top.map((l, i) => {
           const w = wordsCached(fen, l.mv)
           const isB = h.brill?.mv === l.mv
           return (
-            <div className={`hint r${i + 1}`} key={l.mv}>
+            <div className={`hint r${i + 1}${cls(i)}`} key={l.mv} {...pick(i)}>
               <span className="rk">{i + 1}</span>
               <span className="t">
                 {w.text}
@@ -106,7 +150,7 @@ export function EngineSide({ p, onAnalyze }: { p: Play; onAnalyze: (text: string
         {h.brill && !h.top.some((l) => l.mv === h.brill!.mv) && (() => {
           const w = wordsCached(fen, h.brill!.mv)
           return (
-            <div className="hint rb">
+            <div className={`hint rb${cls(h.top.length)}`} {...pick(h.top.length)}>
               <span className="rk">!!</span>
               <span className="t">{w.text}<span className="chip">Brilliant</span><small>{w.san}</small></span>
               <span className="e">{lineText(h.brill!)}</span>
@@ -125,6 +169,9 @@ export function EngineSide({ p, onAnalyze }: { p: Play; onAnalyze: (text: string
       <div className="card">
         <h2>Best moves now</h2>
         <div className="hints">{hintBody}</div>
+        {p.hintsOn && arrowMode === 'one' && p.hints && !p.status.over && !turnIsEngine && (
+          <div className="foot">Tap a move to show its arrow on the board.</div>
+        )}
         <div className={`eng${p.engMsg ? ' err' : ''}`}>
           {p.engMsg ?? (p.hintsOn && !p.status.over && !turnIsEngine ? `Depth ${p.depth}${p.depth >= 22 ? ' (done)' : ' · still thinking'}` : '')}
           {p.engMsg && <> <button onClick={p.retryEngine}>Try again</button></>}

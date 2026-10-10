@@ -45,7 +45,7 @@ function Graph({ a }: { a: Analysis }) {
   )
 }
 
-export function AnalyzeMain({ a, onFlip, onTry }: { a: Analysis; onFlip: () => void; onTry: () => void }) {
+export function AnalyzeMain({ a, onFlip, onTry, onPaste }: { a: Analysis; onFlip: () => void; onTry: () => void; onPaste: () => void }) {
   const last = a.game.fens.length - 1
   const i = a.cur
   const w: WhiteEval | null = whiteEval(a.evals, i)
@@ -55,7 +55,14 @@ export function AnalyzeMain({ a, onFlip, onTry }: { a: Analysis; onFlip: () => v
 
   let verdict: React.ReactNode
   if (i === 0 || !m) {
-    verdict = a.game.moves.length ? 'Press play to watch the game.' : 'Paste a game above and press Analyze. Then press Play to watch it.'
+    verdict = a.game.moves.length ? (
+      'Press play to watch the game.'
+    ) : (
+      <>
+        Drag a piece on the board to play the engine, or{' '}
+        <button className="linkbtn" onClick={onPaste}>paste a game</button> to analyze it.
+      </>
+    )
   } else {
     const played = wordsCached(a.game.fens[i - 1]!, a.game.ucis[i - 1]!)
     const best = e?.[0]
@@ -138,7 +145,6 @@ export function AnalyzeSide({ a }: { a: Analysis }) {
   }, [i])
 
   const e = i > 0 ? a.evals[i - 1] : null
-  const e2 = i > 0 && a.evals2 ? a.evals2[i - 1] : null
   const fen = i > 0 ? a.game.fens[i - 1]! : ''
   const sign = (i - 1) % 2 === 0 ? 1 : -1
 
@@ -189,18 +195,7 @@ export function AnalyzeSide({ a }: { a: Analysis }) {
           {i === 0 ? (
             <span className="foot">Step to a move to see them.</span>
           ) : e && e.length ? (
-            e2 && e2.length ? (
-              <>
-                <div className="foot"><b>{a.engNames.a}</b></div>
-                <AltRows fen={fen} sign={sign} lines={e} />
-                <div className="foot" style={{ marginTop: 8 }}>
-                  <b>{a.engNames.b}</b> · {e2[0]!.mv === e[0]!.mv ? 'picks the same first move' : 'picks a different first move'}
-                </div>
-                <AltRows fen={fen} sign={sign} lines={e2} />
-              </>
-            ) : (
-              <AltRows fen={fen} sign={sign} lines={e} />
-            )
+            <AltRows fen={fen} sign={sign} lines={e} />
           ) : (
             <span className="foot">Waiting for the engine…</span>
           )}
