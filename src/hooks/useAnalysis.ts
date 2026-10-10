@@ -27,7 +27,8 @@ const blank = (n: number): Evals => new Array<EngineLine[] | null>(n).fill(null)
 
 async function analysePosition(fen: string, depth: number, key: string) {
   const c = new Chess(fen)
-  if (c.isGameOver()) {
+  // only a finished game (mate or stalemate) skips the engine; draws by the 50-move count etc. still have a best move
+  if (c.isCheckmate() || c.isStalemate()) {
     const line: EngineLine = { mv: '', t: c.isCheckmate() ? 'mate' : 'cp', v: 0 }
     return { aborted: false, lines: [line] }
   }
@@ -53,6 +54,8 @@ export function useAnalysis(board: BoardApi, setFlipped: (f: boolean) => void) {
   const runId = useRef(0)
 
   const rows = useMemo(() => classifyGame(game, evals), [game, evals])
+  const rowsRef = useRef(rows)
+  rowsRef.current = rows
   const summary = useMemo(() => summarize(rows), [rows])
 
   const go = useCallback(
@@ -140,19 +143,22 @@ export function useAnalysis(board: BoardApi, setFlipped: (f: boolean) => void) {
           }
           setProgress(((i + 1) / n) * 100)
         }
-        if (finished && alive()) {
-          const secs = Math.round((Date.now() - t0) / 1000)
-          const extra = k2 ? ` The two engines picked a different first move in ${disagree} of ${n} positions.` : ''
-          setStatus({ text: `Done in ${secs} s.${extra} Press Play.`, err: false })
-        } else if (alive()) setStatus({ text: 'Stopped.', err: false })
-        else setStatus({ text: 'Stopped.', err: false })
+        if (alive()) {
+          if (finished) {
+            const secs = Math.round((Date.now() - t0) / 1000)
+            const extra = k2 ? ` The two engines picked a different first move in ${disagree} of ${n} positions.` : ''
+            setStatus({ text: `Done in ${secs} s.${extra} Press Play.`, err: false })
+          } else setStatus({ text: 'Stopped.', err: false })
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Engine error'
         if (alive()) setStatus({ text: `${msg} Try again, or open this page in a full browser tab.`, err: true })
       }
       if (alive()) {
         setRunning(false)
-        setTimeout(() => setProgress(null), 1200)
+        setTimeout(() => {
+          if (runId.current === id) setProgress(null)
+        }, 1200)
       }
     },
     [load, running],
@@ -166,10 +172,10 @@ export function useAnalysis(board: BoardApi, setFlipped: (f: boolean) => void) {
       setPlaying(false)
       return
     }
-    const delay = speed * (rows[cur - 1]?.cls === 'Blunder' ? 1.4 : 1)
+    const delay = speed * (rowsRef.current[cur - 1]?.cls === 'Blunder' ? 1.4 : 1)
     const t = setTimeout(() => go(cur + 1), cur === 0 ? speed : delay)
     return () => clearTimeout(t)
-  }, [playing, cur, speed, rows, go])
+  }, [playing, cur, speed, go])
 
   const pause = useCallback(() => setPlaying(false), [])
   const togglePlay = useCallback(() => {

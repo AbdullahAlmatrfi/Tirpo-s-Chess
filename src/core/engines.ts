@@ -24,8 +24,13 @@ export function getEngine(key: string): UciEngine {
   let e = pool.get(key)
   if (!e) {
     const spec = ENGINES.find((s) => s.key === key) ?? ENGINES[0]!
-    e = new UciEngine(spec.label, () => browserWorker(spec.file))
-    pool.set(key, e)
+    const created = new UciEngine(spec.label, () => browserWorker(spec.file))
+    e = created
+    pool.set(key, created)
+    // a failed boot must not be cached: the next request gets a fresh worker
+    created.ready.catch(() => {
+      if (pool.get(key) === created) pool.delete(key)
+    })
   }
   return e
 }

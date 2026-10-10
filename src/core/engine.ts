@@ -4,6 +4,7 @@ import type { EngineLine } from './types'
 export interface WorkerLike {
   postMessage(msg: string): void
   onmessage: ((e: { data: unknown }) => void) | null
+  onerror?: ((e: unknown) => void) | null
   terminate(): void
 }
 
@@ -47,6 +48,8 @@ export class UciEngine {
   private job: ActiveJob | null = null
   private pending: ActiveJob | null = null
   private bootCb: ((m: string) => void) | null = null
+  private bootFail: ((e: Error) => void) | null = null
+  private failed = false
 
   constructor(
     private readonly label: string,
@@ -60,12 +63,20 @@ export class UciEngine {
     return new Promise((res, rej) => {
       const t = setTimeout(() => {
         this.bootCb = null
+        this.bootFail = null
         rej(new Error('timeout'))
       }, ms)
+      this.bootFail = (e) => {
+        clearTimeout(t)
+        this.bootCb = null
+        this.bootFail = null
+        rej(e)
+      }
       this.bootCb = (m) => {
         if (pred(m)) {
           clearTimeout(t)
           this.bootCb = null
+          this.bootFail = null
           res()
         }
       }
@@ -81,18 +92,40 @@ export class UciEngine {
         if (this.bootCb) this.bootCb(e.data)
         else this.onLine(e.data)
       }
+      w.onerror = () => {
+        if (this.bootFail) this.bootFail(new Error('worker error'))
+        else this.breakEngine()
+      }
       w.postMessage('uci')
       await this.waitFor((m) => m === 'uciok', 25000)
       w.postMessage('setoption name Hash value 32')
       w.postMessage('isready')
       await this.waitFor((m) => m === 'readyok', 25000)
     } catch {
+      this.failed = true
       this.w?.terminate()
       this.w = null
       throw new Error(`${this.label} could not start in this view.`)
     }
     this.isReady = true
     this.pump()
+  }
+
+  /** The worker died after booting: settle everything so nothing waits forever. */
+  private breakEngine() {
+    this.failed = true
+    this.isReady = false
+    this.job?.resolve({ aborted: true, lines: [] })
+    this.job = null
+    this.pending?.resolve({ aborted: true, lines: [] })
+    this.pending = null
+    this.w?.terminate()
+    this.w = null
+  }
+
+  /** True once the engine can no longer be used (failed to boot or crashed). */
+  get dead(): boolean {
+    return this.failed
   }
 
   private stopCurrent() {
@@ -129,6 +162,15 @@ export class UciEngine {
 
   private onLine(m: string) {
     const j = this.job
+    // some builds refuse an impossible position and never send "bestmove"; treat that as a failed search
+    if (m.startsWith('info string') && /CRITICAL ERROR|King can be captured/i.test(m)) {
+      this.state = 'idle'
+      this.stopping = false
+      this.job = null
+      j?.resolve({ aborted: true, lines: [] })
+      this.pump()
+      return
+    }
     if (m.startsWith('info')) {
       if (!j || /lowerbound|upperbound/.test(m)) return
       const k = m.match(/ depth (\d+).* multipv (\d+) score (cp|mate) (-?\d+).* pv (\S+)/)
@@ -152,6 +194,7 @@ export class UciEngine {
 
   search(job: SearchJob): Promise<SearchResult> {
     return new Promise((resolve) => {
+      if (this.failed) return resolve({ aborted: true, lines: [] })
       this.pending?.resolve({ aborted: true, lines: [] })
       this.pending = { ...job, resolve, lines: {} }
       this.pump()

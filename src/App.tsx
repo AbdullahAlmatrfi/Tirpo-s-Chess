@@ -225,7 +225,7 @@ export default function App() {
           <label className="l" htmlFor="pgn">Moves (PGN or plain list)</label>
           <textarea id="pgn" spellCheck={false} value={pgn} onChange={(e) => setPgn(e.target.value)} placeholder="1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 ..." />
           <div className="row">
-            <button className="pri" disabled={a.running} onClick={() => void a.run(pgn, { engineKey, engine2, depth, me })}>Analyze</button>
+            <button className="pri" disabled={a.running} onClick={() => { setTryFrom(null); void a.run(pgn, { engineKey, engine2, depth, me }) }}>Analyze</button>
             <button disabled={!a.running} onClick={a.stop}>Stop</button>
             <button onClick={loadSample}>Load sample game</button>
             <select aria-label="Analysis strength" value={depth} onChange={(e) => setDepth(+e.target.value)}>

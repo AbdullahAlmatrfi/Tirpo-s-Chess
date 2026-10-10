@@ -1,8 +1,25 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { lineText } from '../core/eval'
 import { eloLabel, MAX_ELO, MIN_ELO, STOCKFISH_MIN_ELO } from '../core/strength'
 import { moveListText, wordsCached } from '../core/notation'
 import type { Play } from '../hooks/usePlay'
+
+function EloInput({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
+  const [draft, setDraft] = useState(String(value))
+  useEffect(() => setDraft(String(value)), [value])
+  const commit = () => {
+    const n = Number(draft)
+    onCommit(Number.isFinite(n) && draft.trim() !== '' ? n : value)
+  }
+  return (
+    <input
+      type="number" inputMode="numeric" min={MIN_ELO} max={MAX_ELO} step={50} value={draft} aria-label="Engine Elo"
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') commit() }}
+    />
+  )
+}
 
 export function EngineMain({ p, onFlip, onBack }: { p: Play; onFlip: () => void; onBack: (() => void) | null }) {
   return (
@@ -30,10 +47,7 @@ export function EngineMain({ p, onFlip, onBack }: { p: Play; onFlip: () => void;
           <div className="eloTop">
             <label htmlFor="elo">Engine strength</label>
             <span className="eloVal">
-              <input
-                type="number" min={MIN_ELO} max={MAX_ELO} step={50} value={p.elo} aria-label="Engine Elo"
-                onChange={(e) => p.setElo(+e.target.value)}
-              />{' '}
+              <EloInput value={p.elo} onCommit={p.setElo} />{' '}
               Elo · {eloLabel(p.elo)}
             </span>
           </div>

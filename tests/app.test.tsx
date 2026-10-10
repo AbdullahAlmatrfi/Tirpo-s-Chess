@@ -200,4 +200,57 @@ describe('Tirpo\'s Chess app', () => {
     await click(button('Analyze'))
     expect($('.status.err')!.textContent).toMatch(/not legal/)
   })
+
+  it('the Elo box can be edited freely and is clamped only when you finish', async () => {
+    await click(button('Engine'))
+    await click(button('New game'))
+    const opp = $$('select').find((x) => x.getAttribute('aria-label') === 'Opponent') as HTMLSelectElement
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!.call(opp, 'b')
+      opp.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    const box = () => $('input[aria-label="Engine Elo"]') as HTMLInputElement
+    const type = (v: string) => act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(box(), v)
+      box().dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await type('1')
+    await type('15')
+    expect(box().value).toBe('15') // not snapped while typing
+    await type('1500')
+    await act(async () => { box().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) })
+    expect(($('#elo') as HTMLInputElement).value).toBe('1500')
+    await type('50')
+    await act(async () => { box().dispatchEvent(new FocusEvent('focusout', { bubbles: true })) })
+    expect(box().value).toBe('400') // clamped on blur
+  })
+
+  it('releasing a drag outside the board cancels the move', async () => {
+    await click(button('New game'))
+    const opp = $$('select').find((x) => x.getAttribute('aria-label') === 'Opponent') as HTMLSelectElement
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!.call(opp, 'none')
+      opp.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await ptr(board(), 'pointerdown', at('e', 2))
+    await ptr(window, 'pointermove', at('e', 3))
+    await ptr(window, 'pointermove', { clientX: 1200, clientY: at('e', 4).clientY })
+    await ptr(window, 'pointerup', { clientX: 1200, clientY: at('e', 4).clientY })
+    expect($('.moves')!.textContent).toContain('No moves yet')
+    expect($$('.pc.drag')).toHaveLength(0)
+  })
+
+  it('pressing Analyze while in try mode leaves try mode', async () => {
+    await click(button('Analyze a game'))
+    await click(button('Load sample game'))
+    await ptr(board(), 'pointerdown', at('g', 1))
+    await ptr(window, 'pointermove', at('f', 3))
+    await ptr(window, 'pointermove', at('f', 3))
+    await ptr(window, 'pointerup', at('f', 3))
+    expect(document.body.classList.contains('trying')).toBe(true)
+    await click(button('Analyze a game'))
+    await click(button('Analyze'))
+    expect(button(/Back to the game/)).toBeUndefined()
+    expect(document.body.classList.contains('trying')).toBe(false)
+  })
 })

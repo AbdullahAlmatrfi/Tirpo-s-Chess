@@ -130,8 +130,10 @@ export function Board(p: BoardProps) {
       if (!d.active) return
       suppressClick.current = true
       setTimeout(() => (suppressClick.current = false), 0)
+      const r = boardRef.current?.getBoundingClientRect()
+      const inside = !!r && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom
       const to = sqAt(e)
-      if (!cancel && to !== d.sq) props.current.onDrop(d.sq, to)
+      if (!cancel && inside && to !== d.sq) props.current.onDrop(d.sq, to)
     }
     const up = end(false)
     const cancel = end(true)
