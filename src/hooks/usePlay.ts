@@ -31,10 +31,11 @@ export function usePlay(board: BoardApi, active: boolean, engineKey: string, set
   const [lines, setLines] = useState<Record<string, EngineLine>>({})
   const [depth, setDepth] = useState(0)
   const [engMsg, setEngMsg] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
 
   const game = useMemo(() => replay(start, hist), [start, hist])
   const fen = game.fen()
-  const status = useMemo(() => gameStatus(game, opp !== 'none' && opp === game.turn()), [game, opp])
+  const status = useMemo(() => gameStatus(game, opp !== 'none' && opp === game.turn() && !engMsg), [game, opp, engMsg])
   const hints = useMemo(() => (hintsOn ? computeHints(fen, lines) : null), [hintsOn, fen, lines])
 
   const S = useRef({ start, hist, redoStack, game, opp })
@@ -169,6 +170,11 @@ export function usePlay(board: BoardApi, active: boolean, engineKey: string, set
     [setFlipped],
   )
 
+  const engineTurn = opp !== 'none' && opp === game.turn()
+  // the Elo only matters while the engine is the one moving; changing it must not restart the hint search
+  const eloKey = engineTurn ? elo : 0
+  const retryEngine = useCallback(() => setRetry((n) => n + 1), [])
+
   // engine: live hints for the human side, or a reply when it is the engine's turn
   const flush = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
@@ -220,7 +226,7 @@ export function usePlay(board: BoardApi, active: boolean, engineKey: string, set
       eng.cancel()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, fen, engineKey, opp, elo, hintsOn, status.over])
+  }, [active, fen, engineKey, opp, eloKey, hintsOn, status.over, retry])
 
   const last: [string, string] | null = hist.length
     ? [hist[hist.length - 1]!.from, hist[hist.length - 1]!.to]
@@ -228,7 +234,7 @@ export function usePlay(board: BoardApi, active: boolean, engineKey: string, set
 
   return {
     start, hist, redoStack, sel, opp, elo, hintsOn, depth, engMsg, game, fen, status, hints, last, myTurn,
-    setElo, setHintsOn, setOpp, click, grab, drop, playMove, undo, redo, newGame, enterFrom, loadSetup, reset,
+    setElo, retryEngine, setHintsOn, setOpp, click, grab, drop, playMove, undo, redo, newGame, enterFrom, loadSetup, reset,
   }
 }
 

@@ -22,7 +22,7 @@ const pool = new Map<string, UciEngine>()
 
 export function getEngine(key: string): UciEngine {
   let e = pool.get(key)
-  if (!e) {
+  if (!e || e.dead) {
     const spec = ENGINES.find((s) => s.key === key) ?? ENGINES[0]!
     const created = new UciEngine(spec.label, () => browserWorker(spec.file))
     e = created

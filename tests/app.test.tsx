@@ -253,4 +253,61 @@ describe('Tirpo\'s Chess app', () => {
     expect(button(/Back to the game/)).toBeUndefined()
     expect(document.body.classList.contains('trying')).toBe(false)
   })
+
+  it('Stop clears the progress bar and says Stopped; Try moves is disabled while running', async () => {
+    await click(button('Analyze a game'))
+    await click(button('Load sample game'))
+    await click(button('Analyze'))
+    expect((button('Try moves from here') as HTMLButtonElement).disabled).toBe(true)
+    await click(button('Stop'))
+    expect($('.status')!.textContent).toBe('Stopped.')
+    expect($('.prog')).toBeNull()
+    expect((button('Try moves from here') as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('the Elo box shows the value that was actually applied', async () => {
+    await click(button('Engine'))
+    await click(button('New game'))
+    const opp = $$('select').find((x) => x.getAttribute('aria-label') === 'Opponent') as HTMLSelectElement
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!.call(opp, 'b')
+      opp.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await click(button('Max'))
+    const box = () => $('input[aria-label="Engine Elo"]') as HTMLInputElement
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(box(), '9999')
+      box().dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => { box().dispatchEvent(new FocusEvent('focusout', { bubbles: true })) })
+    expect(box().value).toBe('3200')
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(box(), '')
+      box().dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => { box().dispatchEvent(new FocusEvent('focusout', { bubbles: true })) })
+    expect(box().value).toBe('3200')
+  })
+
+  it('a promotion shows one target dot, and a second finger cannot hijack a drag', async () => {
+    await click(button('New game'))
+    const opp = $$('select').find((x) => x.getAttribute('aria-label') === 'Opponent') as HTMLSelectElement
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!.call(opp, 'none')
+      opp.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    const ta = $$('textarea').find((x) => /FEN/.test(x.getAttribute('placeholder') ?? '')) as HTMLTextAreaElement
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(ta, '4k3/P7/8/8/8/8/8/4K3 w - - 0 1')
+      ta.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await click(button('Load'))
+    await ptr(board(), 'pointerdown', at('a', 7))
+    await ptr(window, 'pointermove', at('a', 7).clientX === 0 ? at('a', 8) : { clientX: at('a', 7).clientX + 30, clientY: at('a', 7).clientY - 30 })
+    expect($$('.cell.legal')).toHaveLength(1)
+    // a second pointer going down on another piece is ignored while the first drag is in progress
+    await ptr(board(), 'pointerdown', at('e', 1))
+    await ptr(window, 'pointerup', at('a', 8))
+    expect($('.moves')!.textContent).toMatch(/a8=Q/)
+  })
 })

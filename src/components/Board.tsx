@@ -163,7 +163,7 @@ export function Board(p: BoardProps) {
   }, [])
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0 || !p.interactive) return
+    if (e.button !== 0 || !p.interactive || e.isPrimary === false || dragRef.current) return
     const sq = sqAt(e)
     if (!p.canGrab(sq)) return
     dragRef.current = { sq, x: e.clientX, y: e.clientY, active: false, id: e.pointerId }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import { Board, type ArrowSpec } from './components/Board'
 import { EvalBar } from './components/EvalBar'
@@ -52,6 +52,20 @@ export default function App() {
   const a = useAnalysis(boardApi, setFlipped)
   const p = usePlay(boardApi, mode === 'engine', engineKey, setFlipped)
 
+  // keep the board where it is on screen when the panels around it change (switching tabs, entering try mode)
+  const boardTop = useRef<number | null>(null)
+  const rememberBoard = () => {
+    const el = document.querySelector('.board')
+    boardTop.current = el ? el.getBoundingClientRect().top : null
+  }
+  useLayoutEffect(() => {
+    if (boardTop.current === null) return
+    const el = document.querySelector('.board')
+    const d = el ? el.getBoundingClientRect().top - boardTop.current : 0
+    boardTop.current = null
+    if (Math.abs(d) > 1) window.scrollBy(0, d)
+  }, [mode])
+
   const trying = tryFrom !== null && mode === 'engine'
   useEffect(() => {
     document.body.classList.toggle('trying', trying)
@@ -74,6 +88,7 @@ export default function App() {
         }
       }
       cancelAllEngines()
+      rememberBoard()
       setMode(m)
       setFen(m === 'analyze' ? a.game.fens[a.cur]! : p.fen)
     },
@@ -90,7 +105,9 @@ export default function App() {
     return !!pc && pc.color === analyzedPos.turn()
   }
   const enterTry = (sel: Square | null) => {
+    if (a.running) return
     a.pause()
+    rememberBoard()
     const m = a.cur > 0 ? a.game.moves[a.cur - 1]! : null
     cancelAllEngines()
     p.enterFrom(a.game.fens[a.cur]!, m ? [m.from, m.to] : null, sel)
@@ -101,12 +118,14 @@ export default function App() {
     const i = tryFrom ?? a.cur
     setTryFrom(null)
     cancelAllEngines()
+    rememberBoard()
     setMode('analyze')
     a.go(i, false)
   }
   const analyzeText = (text: string) => {
     setPgn(text)
     setTryFrom(null)
+    rememberBoard()
     setMode('analyze')
     void a.run(text, { engineKey, engine2, depth, me })
   }
@@ -125,7 +144,7 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement
-      if (mode !== 'analyze' || ['TEXTAREA', 'SELECT', 'INPUT'].includes(t.tagName)) return
+      if (mode !== 'analyze' || e.altKey || e.ctrlKey || e.metaKey || ['TEXTAREA', 'SELECT', 'INPUT'].includes(t.tagName)) return
       if (e.key === 'ArrowRight') { a.pause(); a.go(a.cur + 1) }
       else if (e.key === 'ArrowLeft') { a.pause(); a.go(a.cur - 1) }
       else if (e.key === ' ' && t.tagName !== 'BUTTON') { e.preventDefault(); a.togglePlay() }
@@ -173,8 +192,9 @@ export default function App() {
       const b = h.best
       bar = b.t === 'mate' ? (sign * (b.v > 0 ? 1 : -1) > 0 ? 100 : 0) : barPct(sign * b.v)
     }
+    // one dot per target square (a promotion has four moves to the same square)
     const dots = p.sel
-      ? p.game.moves({ square: p.sel as Square, verbose: true }).map((m) => ({ sq: m.to, cap: !!m.captured }))
+      ? [...new Map(p.game.moves({ square: p.sel as Square, verbose: true }).map((m) => [m.to, { sq: m.to as string, cap: !!m.captured }])).values()]
       : []
     return { arrows, tag, bar, dots }
   })()
@@ -183,7 +203,7 @@ export default function App() {
   const boardProps = isAnalyze
     ? {
         last: analyzeView.last, badge: analyzeView.badge, arrows: analyzeView.arrows, tag: null, dots: [], selected: null,
-        markKey: `a${a.cur}`, interactive: !a.running, className: '',
+        markKey: `a${a.cur}`, interactive: !a.running, className: 'pmode',
         canGrab: canTry, onGrab: (sq: Square) => enterTry(sq), onSquareClick: (sq: Square) => { if (canTry(sq)) enterTry(sq) },
         onDrop: () => {},
       }
@@ -228,10 +248,14 @@ export default function App() {
             <button className="pri" disabled={a.running} onClick={() => { setTryFrom(null); void a.run(pgn, { engineKey, engine2, depth, me }) }}>Analyze</button>
             <button disabled={!a.running} onClick={a.stop}>Stop</button>
             <button onClick={loadSample}>Load sample game</button>
-            <select aria-label="Analysis strength" value={depth} onChange={(e) => setDepth(+e.target.value)}>
-              <option value="10">Fast</option><option value="14">Normal</option><option value="18">Deep (slow)</option>
-            </select>
-            <input id="me" aria-label="Your username" placeholder="Your username" autoComplete="off" spellCheck={false} value={me} onChange={(e) => setMe(e.target.value)} />
+            <label className="lbl">Depth
+              <select aria-label="Analysis strength" value={depth} onChange={(e) => setDepth(+e.target.value)}>
+                <option value="10">Fast</option><option value="14">Normal</option><option value="18">Deep (slow)</option>
+              </select>
+            </label>
+            <label className="lbl">Your username
+              <input id="me" aria-label="Your username" placeholder="flips the board for you" autoComplete="off" spellCheck={false} value={me} onChange={(e) => setMe(e.target.value)} />
+            </label>
             <span className={`status${a.status.err ? ' err' : ''}`}>{a.status.text}</span>
           </div>
           {a.progress !== null && <div className="prog"><i style={{ width: `${a.progress}%` }} /></div>}
@@ -245,7 +269,7 @@ export default function App() {
           )}
           {trying && <div className="trybar">🧪 Analysis board · NOT the real game</div>}
           <div className="boardrow">
-            <EvalBar pct={isAnalyze ? analyzeView.bar : engineView.bar} />
+            <EvalBar pct={isAnalyze ? analyzeView.bar : engineView.bar} flipped={flipped} />
             <Board
               pieces={pieces}
               flipped={flipped}

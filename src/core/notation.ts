@@ -135,7 +135,7 @@ export function illegalMessage(chess: Chess, tokens: string[], i: number, legalS
   const all = chess.moves()
   return (
     `Move ${no}${dots} "${tokens[i]}" is not legal here. Legal moves at that point: ` +
-    all.slice(0, legalShown).join(', ') + (all.length > legalShown ? ', ...' : '') +
+    all.slice(0, legalShown).join(', ') + (all.length > legalShown ? ', …' : '') +
     '. Check that move in your list.'
   )
 }
@@ -153,7 +153,12 @@ export function buildGame(text: string): BuildResult {
   const ucis: string[] = []
   for (let i = 0; i < toks.length; i++) {
     const m = tryMove(c, toks[i]!)
-    if (!m) return { ok: false, error: illegalMessage(c, toks, i) }
+    if (!m) {
+      if (i === 0 && !/^([KQRBN]?[a-h]?[1-8]?x?[a-h][1-8]|O-O)/i.test(toks[0]!)) {
+        return { ok: false, error: `That doesn't look like a chess move list ("${toks[0]!.slice(0, 20)}"). Paste a PGN or moves like "1. e4 e5 2. Nf3".` }
+      }
+      return { ok: false, error: illegalMessage(c, toks, i) }
+    }
     moves.push(m)
     ucis.push(m.from + m.to + (m.promotion ?? ''))
     fens.push(c.fen())
@@ -188,6 +193,24 @@ export function positionProblem(fen: string): string | null {
   return null
 }
 
+/** Keep only castling rights that the pieces support, and drop en passant (not worth the risk). */
+export function sanitizeFen(fen: string): string {
+  const [placement, side, castling, , half, full] = fen.split(/\s+/)
+  const rows = placement!.split('/').map((row) => {
+    const out: string[] = []
+    for (const ch of row) /\d/.test(ch) ? out.push(...Array<string>(+ch).fill('')) : out.push(ch)
+    return out
+  })
+  const at = (file: string, rank: number) => rows[8 - rank]?.[FILES.indexOf(file)]
+  const keep = (c: string) =>
+    (c === 'K' && at('e', 1) === 'K' && at('h', 1) === 'R') ||
+    (c === 'Q' && at('e', 1) === 'K' && at('a', 1) === 'R') ||
+    (c === 'k' && at('e', 8) === 'k' && at('h', 8) === 'r') ||
+    (c === 'q' && at('e', 8) === 'k' && at('a', 8) === 'r')
+  const rights = [...(castling ?? '-')].filter((c) => c !== '-' && keep(c)).join('') || '-'
+  return [placement, side, rights, '-', half ?? '0', full ?? '1'].join(' ')
+}
+
 export interface Setup {
   start: string | null
   hist: Move[]
@@ -200,7 +223,7 @@ export function parseSetup(txt: string): { ok: true; setup: Setup } | { ok: fals
   const g = new Chess()
   if (/\//.test(t) && !/^\s*(\[|1\.)/.test(t) && t.split(/\s+/)[0]!.split('/').length === 8) {
     const p = t.split(/\s+/)
-    const fen = [p[0], p[1] || 'w', p[2] || '-', p[3] || '-', p[4] || '0', p[5] || '1'].join(' ')
+    const fen = sanitizeFen([p[0], p[1] || 'w', p[2] || '-', p[3] || '-', p[4] || '0', p[5] || '1'].join(' '))
     const problem = positionProblem(fen)
     if (problem) return { ok: false, error: problem }
     return { ok: true, setup: { start: fen, hist: [] } }
@@ -220,5 +243,20 @@ export function parseSetup(txt: string): { ok: true; setup: Setup } | { ok: fals
   return { ok: true, setup: { start: null, hist } }
 }
 
+export interface MoveToken {
+  /** "12." before a White move, "12..." before Black's first listed move, otherwise empty */
+  label: string
+  san: string
+}
+
+/** Numbered move tokens that stay correct for lines starting from any position (Black to move included). */
+export function moveTokens(hist: Move[]): MoveToken[] {
+  return hist.map((m, i) => {
+    const n = Number(m.before.split(' ')[5]) || Math.floor(i / 2) + 1
+    const label = m.color === 'w' ? `${n}.` : i === 0 ? `${n}...` : ''
+    return { label, san: m.san }
+  })
+}
+
 export const moveListText = (hist: Move[]): string =>
-  hist.map((m, i) => (i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ` : '') + m.san).join(' ')
+  moveTokens(hist).map((t) => (t.label ? `${t.label} ${t.san}` : t.san)).join(' ')

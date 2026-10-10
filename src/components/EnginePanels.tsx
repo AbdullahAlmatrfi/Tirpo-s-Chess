@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { lineText } from '../core/eval'
 import { eloLabel, MAX_ELO, MIN_ELO, STOCKFISH_MIN_ELO } from '../core/strength'
-import { moveListText, wordsCached } from '../core/notation'
+import { moveListText, moveTokens, wordsCached } from '../core/notation'
 import type { Play } from '../hooks/usePlay'
 
 function EloInput({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
@@ -9,7 +9,10 @@ function EloInput({ value, onCommit }: { value: number; onCommit: (v: number) =>
   useEffect(() => setDraft(String(value)), [value])
   const commit = () => {
     const n = Number(draft)
-    onCommit(Number.isFinite(n) && draft.trim() !== '' ? n : value)
+    const next = Number.isFinite(n) && draft.trim() !== '' ? n : value
+    onCommit(next)
+    // show what was actually applied (clamped, or the old value if the box was empty/invalid)
+    setDraft(String(Math.max(MIN_ELO, Math.min(MAX_ELO, Math.round(next)))))
   }
   return (
     <input
@@ -124,6 +127,7 @@ export function EngineSide({ p, onAnalyze }: { p: Play; onAnalyze: (text: string
         <div className="hints">{hintBody}</div>
         <div className={`eng${p.engMsg ? ' err' : ''}`}>
           {p.engMsg ?? (p.hintsOn && !p.status.over && !turnIsEngine ? `Depth ${p.depth}${p.depth >= 22 ? ' (done)' : ' · still thinking'}` : '')}
+          {p.engMsg && <> <button onClick={p.retryEngine}>Try again</button></>}
         </div>
       </div>
       <div className="card">
@@ -131,10 +135,10 @@ export function EngineSide({ p, onAnalyze }: { p: Play; onAnalyze: (text: string
         <div className="moves">
           {p.hist.length === 0
             ? 'No moves yet.'
-            : p.hist.map((m, i) => (
+            : moveTokens(p.hist).map((t, i) => (
                 <span key={i}>
-                  {i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ` : ''}
-                  {i === p.hist.length - 1 ? <b>{m.san}</b> : m.san}{' '}
+                  {t.label ? `${t.label} ` : ''}
+                  {i === p.hist.length - 1 ? <b>{t.san}</b> : t.san}{' '}
                 </span>
               ))}
         </div>

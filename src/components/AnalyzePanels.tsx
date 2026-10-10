@@ -89,9 +89,11 @@ export function AnalyzeMain({ a, onFlip, onTry }: { a: Analysis; onFlip: () => v
         <button aria-label="Next move" onClick={() => { a.pause(); a.go(i + 1) }}>▶</button>
         <button aria-label="Go to end" onClick={() => { a.pause(); a.go(last, false) }}>⏭</button>
         <button onClick={onFlip}>Flip board ⇅</button>
-        <select aria-label="Speed" value={a.speed} onChange={(e) => a.setSpeed(+e.target.value)}>
-          <option value="1900">Slow</option><option value="1200">Normal</option><option value="600">Fast</option>
-        </select>
+        <label className="lbl">Speed
+          <select aria-label="Speed" value={a.speed} onChange={(e) => a.setSpeed(+e.target.value)}>
+            <option value="1900">Slow</option><option value="1200">Normal</option><option value="600">Fast</option>
+          </select>
+        </label>
       </div>
       <div className="card verdict" aria-live="polite" style={{ marginTop: 12 }}>
         <div className="vtop">
@@ -103,7 +105,7 @@ export function AnalyzeMain({ a, onFlip, onTry }: { a: Analysis; onFlip: () => v
         </div>
         <div className="vtxt">{verdict}</div>
       </div>
-      <div className="ctrl"><button onClick={onTry}>Try moves from here</button></div>
+      <div className="ctrl"><button onClick={onTry} disabled={a.running}>Try moves from here</button></div>
       <Graph a={a} />
     </div>
   )
@@ -114,7 +116,7 @@ function AltRows({ fen, sign, lines }: { fen: string; sign: number; lines: NonNu
     <>
       {lines.map((l, k) => {
         const wd = wordsCached(fen, l.mv)
-        const ev = l.t === 'mate' ? `M${Math.abs(l.v)}` : `${sign * l.v > 0 ? '+' : ''}${((sign * l.v) / 100).toFixed(1)}`
+        const ev = l.t === 'mate' ? `${sign * l.v > 0 ? '' : '-'}M${Math.abs(l.v)}` : `${sign * l.v > 0 ? '+' : ''}${((sign * l.v) / 100).toFixed(1)}`
         return (
           <div className="alt" key={k}>
             <span className="e">{ev}</span>

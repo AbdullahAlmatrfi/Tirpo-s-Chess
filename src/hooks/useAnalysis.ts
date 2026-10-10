@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { classifyGame, summarize } from '../core/classify'
+import { classifyMove, summarize } from '../core/classify'
 import { cancelAllEngines, engineLabel, getEngine } from '../core/engines'
 import { buildGame, emptyGame } from '../core/notation'
-import type { EngineLine, Evals, GameData } from '../core/types'
+import type { Classification, EngineLine, Evals, GameData } from '../core/types'
 import { Chess } from 'chess.js'
 
 export interface BoardApi {
@@ -53,7 +53,21 @@ export function useAnalysis(board: BoardApi, setFlipped: (f: boolean) => void) {
   gameRef.current = game
   const runId = useRef(0)
 
-  const rows = useMemo(() => classifyGame(game, evals), [game, evals])
+  // classify incrementally: a move is only re-graded when its two neighbouring evals changed
+  const rowCache = useRef<{ game: GameData; items: { b: unknown; a: unknown; r: Classification | null }[] }>({ game, items: [] })
+  const rows = useMemo(() => {
+    if (rowCache.current.game !== game) rowCache.current = { game, items: [] }
+    const items = rowCache.current.items
+    return game.moves.map((_, i) => {
+      const b = evals[i] ?? null
+      const a = evals[i + 1] ?? null
+      const hit = items[i]
+      if (hit && hit.b === b && hit.a === a) return hit.r
+      const r = classifyMove(game.fens[i]!, game.ucis[i]!, b, a, i)
+      items[i] = { b, a, r }
+      return r
+    })
+  }, [game, evals])
   const rowsRef = useRef(rows)
   rowsRef.current = rows
   const summary = useMemo(() => summarize(rows), [rows])
@@ -95,6 +109,8 @@ export function useAnalysis(board: BoardApi, setFlipped: (f: boolean) => void) {
     runId.current++
     cancelAllEngines()
     setRunning(false)
+    setProgress(null)
+    setStatus({ text: 'Stopped.', err: false })
   }, [])
 
   const run = useCallback(
