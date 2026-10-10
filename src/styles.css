@@ -19,7 +19,7 @@
   --bar-w:#eef2ee; --bar-b:#0c110f; --a1:#4fd184; --a2:#6aa2ff; --a3:#a3b2ad; --brill:#35d0d6; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);padding-inline:16px;padding-block:16px 40px;margin:0}
-.wrap{max-width:1000px;margin-inline:auto;display:grid;gap:16px}
+.wrap{max-width:1400px;margin-inline:auto;display:grid;gap:16px}
 .top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
 h1{font-family:var(--display);font-size:clamp(1.35rem,4.5vw,1.9rem);margin:0;font-weight:600}
 .sub{color:var(--muted);font-size:.85rem;margin:4px 0 0;max-width:62ch}
@@ -44,10 +44,10 @@ label.chk{display:inline-flex;gap:6px;align-items:center;font-weight:600;font-si
 .prog{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:10px}
 .prog i{display:block;height:100%;width:0;background:var(--best);transition:width .2s}
 .main{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
-@media (min-width:860px){.main{grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr);align-items:start}}
+@media (min-width:860px){.main{grid-template-columns:minmax(0,1fr) minmax(320px,400px);align-items:start}}
 .names{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700;font-size:.9rem;margin-bottom:8px;min-height:30px}
 .names span{overflow-wrap:anywhere}
-.boardrow{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;max-width:max(300px,min(100%,calc(100dvh - 120px)));margin-inline:auto}
+.boardrow{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;max-width:var(--bsize,max(300px,min(100%,calc(100dvh - 120px))));margin-inline:auto}
 .bar{position:relative;border-radius:4px;overflow:hidden;background:var(--bar-b);border:1px solid var(--line)}
 .bar .w{position:absolute;left:0;right:0;bottom:0;background:var(--bar-w);transition:height .45s cubic-bezier(.3,.7,.2,1)}
 .bar.off{opacity:.25}
@@ -158,3 +158,8 @@ body.trying .boardrow{background:radial-gradient(ellipse at center,rgba(124,92,2
   .paste .status{margin-top:10px}
 }
 button.linkbtn{min-height:0;padding:0;border:0;background:none;color:var(--great);text-decoration:underline;font:inherit;font-weight:700}
+
+.sizer{gap:8px}
+.sizer input[type=range]{width:150px;accent-color:var(--best)}
+.sizer small{color:var(--muted);font:600 .75rem var(--mono);min-width:3.2em}
+@media (max-width:599px){.sizer{display:none}}

@@ -138,6 +138,17 @@ describe('Tirpo\'s Chess app', () => {
     expect(lines()).toHaveLength(1)
   })
 
+  it('board size slider sets the board width, is remembered, and Auto goes back to fit-the-window', async () => {
+    const wrap = () => $('.wrap') as HTMLElement
+    expect(wrap().style.getPropertyValue('--bsize')).toBe('')
+    await setValue($('#bsize') as HTMLInputElement, '900')
+    expect(wrap().style.getPropertyValue('--bsize')).toBe('900px')
+    expect(localStorage.getItem('tc_board')).toBe('900')
+    await click(button('Auto'))
+    expect(wrap().style.getPropertyValue('--bsize')).toBe('')
+    expect(localStorage.getItem('tc_board')).toBeNull()
+  })
+
   it('has one engine dropdown only, and the status says which engine analysed the game', async () => {
     await click(button('Analyze a game'))
     expect($$('select').filter((s) => s.getAttribute('aria-label') === 'Engine')).toHaveLength(1)

@@ -21,6 +21,9 @@ type Mode = 'analyze' | 'engine'
 const START_FEN = new Chess().fen()
 const ME_KEY = 'tc_me'
 const ARROWS_KEY = 'tc_arrows'
+const SIZE_KEY = 'tc_board'
+const MIN_BOARD = 320
+const MAX_BOARD = 1100
 
 function readMe(): string {
   try {
@@ -39,6 +42,15 @@ function readArrowMode(): ArrowMode {
   }
 }
 
+function readBoardSize(): number | null {
+  try {
+    const n = Number(localStorage.getItem(SIZE_KEY))
+    return Number.isFinite(n) && n >= MIN_BOARD && n <= MAX_BOARD ? n : null
+  } catch {
+    return null
+  }
+}
+
 function EngineSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} aria-label="Engine">
@@ -54,6 +66,9 @@ export default function App() {
   const [depth, setDepth] = useState(14)
   const [me, setMe] = useState(readMe)
   const [pgn, setPgn] = useState('')
+  // board size in px; null = fit the window
+  const [boardSize, setBoardSize] = useState<number | null>(readBoardSize)
+  const [shownSize, setShownSize] = useState(640)
   // on phones the paste box starts folded so the board is the first thing you see (desktop CSS ignores this)
   const [pasteOpen, setPasteOpen] = useState(false)
   const pasteRef = useRef<HTMLDivElement>(null)
@@ -102,6 +117,22 @@ export default function App() {
       localStorage.setItem(ME_KEY, me.trim())
     } catch { /* storage unavailable */ }
   }, [me])
+  useEffect(() => {
+    try {
+      if (boardSize === null) localStorage.removeItem(SIZE_KEY)
+      else localStorage.setItem(SIZE_KEY, String(boardSize))
+    } catch { /* storage unavailable */ }
+  }, [boardSize])
+  // keep the slider in step with the real board width (it changes with the window when on Auto)
+  useEffect(() => {
+    const measure = () => {
+      const el = document.querySelector('.board')
+      if (el) setShownSize(Math.round(el.getBoundingClientRect().width))
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [boardSize, mode])
   useEffect(() => {
     try {
       localStorage.setItem(ARROWS_KEY, arrowMode)
@@ -293,7 +324,7 @@ export default function App() {
   const evTop = evalText(whiteEval(a.evals, a.cur))
 
   return (
-    <div className="wrap">
+    <div className="wrap" style={boardSize ? ({ '--bsize': `${boardSize}px` } as React.CSSProperties) : undefined}>
       <div className="top">
         <div>
           <h1>{APP_NAME}</h1>
@@ -310,6 +341,14 @@ export default function App() {
 
       <div className="engrow">
         <label className="chk">Engine <EngineSelect value={engineKey} onChange={setEngineKey} /></label>
+        <span className="chk sizer">
+          <label htmlFor="bsize">Board size</label>
+          <input
+            id="bsize" type="range" min={MIN_BOARD} max={MAX_BOARD} step={10} value={boardSize ?? Math.min(MAX_BOARD, Math.max(MIN_BOARD, shownSize))}
+            onChange={(e) => setBoardSize(+e.target.value)}
+          />
+          <button onClick={() => setBoardSize(null)} disabled={boardSize === null}>Auto</button>
+        </span>
       </div>
 
       <div className="main">
