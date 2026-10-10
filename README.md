@@ -50,4 +50,20 @@ directory (`dist`). Every push to `main` redeploys.
 - Move labels are close to, but not the same as, Chess.com's.
 - Engines are the "lite" single-threaded Stockfish builds. The full-strength NNUE builds are very large; adding them
   (and human-like engines such as Maia) is planned.
-- Stockfish is GPLv3. Because this project bundles it, publish the project under GPL-3.0 as well.
+
+## License
+
+Copyright (C) 2026 AbdullahAlmatrfi
+
+Tirpo's Chess is free software, released under the **GNU General Public License v3.0 or later** (see [`LICENSE`](LICENSE)).
+It bundles Stockfish, which is GPLv3, so this project has to be GPL as well. You can use, change and share it, but anything
+you distribute based on it must stay open under the same license.
+
+### Third-party software
+
+- **Stockfish** (GPL-3.0) - the chess engine. https://github.com/official-stockfish/Stockfish
+- **stockfish.js** by Nathan Rugg (GPL-3.0) - the WebAssembly builds in `public/engines/`. https://github.com/nmrugg/stockfish.js
+- **chess.js** (BSD-2-Clause) - move generation and rules. https://github.com/jhlywa/chess.js
+- **React** (MIT) and **Vite** (MIT).
+
+Not affiliated with Chess.com or Lichess. Please don't use this to get engine help in live or rated games.
