@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://tirposchess.netlify.app/sitemap.xml
