@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { MOVE_CLASSES, type MoveClass } from '../core/types'
 import { evalText, whiteBarPct, whiteEval, type WhiteEval } from '../core/eval'
 import { NEEDS_BEST_HINT } from '../core/classify'
+import { explainMove } from '../core/explain'
 import { wordsCached } from '../core/notation'
 import { CLASS_VAR, classColor } from '../ui'
 import type { Analysis } from '../hooks/useAnalysis'
@@ -52,6 +53,16 @@ export function AnalyzeMain({ a, onFlip, onTry, onPaste }: { a: Analysis; onFlip
   const r = i > 0 ? a.rows[i - 1] : null
   const e = i > 0 ? a.evals[i - 1] : null
   const m = i > 0 ? a.game.moves[i - 1] : null
+
+  const before = i > 0 ? a.evals[i - 1] : null
+  const after = i > 0 ? a.evals[i] : null
+  const ex = useMemo(
+    () =>
+      i > 0 && r && before?.length && after?.length
+        ? explainMove({ fenBefore: a.game.fens[i - 1]!, played: a.game.ucis[i - 1]!, cls: r, before, after, ply: i - 1 })
+        : null,
+    [i, r, before, after, a.game],
+  )
 
   let verdict: React.ReactNode
   if (i === 0 || !m) {
@@ -111,6 +122,20 @@ export function AnalyzeMain({ a, onFlip, onTry, onPaste }: { a: Analysis; onFlip
           <span className="vev">{i === 0 ? '' : evalText(w)}</span>
         </div>
         <div className="vtxt">{verdict}</div>
+      </div>
+      <div className="card why" aria-live="polite">
+        <h2>Why this move?</h2>
+        {ex && ex.headline ? (
+          <>
+            <p className="whyhead">{ex.headline}</p>
+            <ul>{ex.reasons.map((t, k) => <li key={k}>{t}</li>)}</ul>
+            {ex.lines.map((l, k) => (
+              <div className="whyline" key={k}><b>{l.label}:</b> <span>{l.text}</span></div>
+            ))}
+          </>
+        ) : (
+          <p className="foot">{i === 0 ? 'Step to a move to see the reasons behind it.' : 'Waiting for the engine…'}</p>
+        )}
       </div>
       <div className="ctrl"><button onClick={onTry} disabled={a.running}>Try moves from here</button></div>
       <Graph a={a} />

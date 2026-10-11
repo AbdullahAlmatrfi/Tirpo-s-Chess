@@ -2,12 +2,13 @@ import type { Color, Move, PieceSymbol, Square } from 'chess.js'
 
 export type { Color, Move, PieceSymbol, Square }
 
-/** One engine principal variation: first move, score and search depth. */
+/** One engine principal variation: first move, score, search depth and the full line (UCI moves). */
 export interface EngineLine {
   mv: string
   t: 'cp' | 'mate'
   v: number
   d?: number
+  pv?: string[]
 }
 
 export const MOVE_CLASSES = [

@@ -28,6 +28,9 @@ describe('Tirpo\'s Chess app', () => {
     expect($('.vmove')!.textContent).toMatch(/^1\. g3/)
     expect($$('.alt').length).toBeGreaterThanOrEqual(3)
     expect($$('.mv.on')).toHaveLength(1)
+    // every move comes with plain-English reasons
+    expect($('.whyhead')!.textContent!.length).toBeGreaterThan(5)
+    expect($$('.why li').length).toBeGreaterThanOrEqual(1)
   })
 
   it('flips the board', async () => {

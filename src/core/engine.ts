@@ -173,9 +173,10 @@ export class UciEngine {
     }
     if (m.startsWith('info')) {
       if (!j || /lowerbound|upperbound/.test(m)) return
-      const k = m.match(/ depth (\d+).* multipv (\d+) score (cp|mate) (-?\d+).* pv (\S+)/)
+      const k = m.match(/ depth (\d+).* multipv (\d+) score (cp|mate) (-?\d+).* pv (.+)$/)
       if (k) {
-        j.lines[k[2]!] = { mv: k[5]!, t: k[3] as 'cp' | 'mate', v: +k[4]!, d: +k[1]! }
+        const pv = k[5]!.trim().split(/\s+/)
+        j.lines[k[2]!] = { mv: pv[0]!, t: k[3] as 'cp' | 'mate', v: +k[4]!, d: +k[1]!, pv }
         j.onInfo?.(j.lines, +k[1]!)
       }
     } else if (m.startsWith('bestmove')) {

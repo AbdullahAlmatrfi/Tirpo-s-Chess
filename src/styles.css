@@ -163,3 +163,9 @@ button.linkbtn{min-height:0;padding:0;border:0;background:none;color:var(--great
 .sizer input[type=range]{width:150px;accent-color:var(--best)}
 .sizer small{color:var(--muted);font:600 .75rem var(--mono);min-width:3.2em}
 @media (max-width:599px){.sizer{display:none}}
+
+.why{margin-top:12px;min-height:12em}
+.whyhead{font-weight:700;margin:0;line-height:1.4}
+.why ul{margin:8px 0 0;padding-left:1.2em;display:grid;gap:7px;font-size:.92rem;line-height:1.5}
+.whyline{margin-top:8px;font-size:.85rem;color:var(--muted);overflow-wrap:anywhere}
+.whyline span{font:600 .82rem var(--mono);color:var(--fg)}

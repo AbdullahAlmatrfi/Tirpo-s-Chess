@@ -10,6 +10,9 @@ Free chess game analyzer and practice board. Runs Stockfish in your browser: gra
 - **Analyze a game.** Paste a PGN or move list. Every move is graded: Brilliant, Great, Best, Excellent, Good, Book,
   Forced, Inaccuracy, Mistake, Blunder. Accuracy per side, evaluation graph, replay with smooth piece animation.
   The board flips automatically when you play Black (set your username).
+- **Why this move?** Every analysed move gets plain-English reasons (hanging pieces, wins and trades, forks, forced mate,
+  opening principles, the missed better move, and the engine's own follow-up line). Built from facts checked on the board plus
+  Stockfish's evaluations, so quiet positional moves get an honest "positional" note rather than an invented story.
 - **One engine dropdown.** Stockfish 19, 18 or 17.1 (lite); more models are planned.
 - **Play the engine tab.** Live top-3 moves (plus a Brilliant hint when a sacrifice is among the best). The board shows
   one arrow at a time (tap or hover a move to switch), or all three, or none. Drag-and-drop or click-click moves,
